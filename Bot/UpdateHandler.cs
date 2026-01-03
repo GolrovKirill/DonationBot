@@ -1,4 +1,8 @@
-﻿using Bot.Handlers;
+﻿// <copyright file="UpdateHandler.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Handlers;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -81,9 +85,7 @@ public class UpdateHandler : IUpdateHandler
             _ => exception.Message
         };
 
-        logger.LogError(
-            exception,
-            "Error occurred from source {ErrorSource}. Message: {ErrorMessage}", errorSource, errorMessage);
+        logger.LogError(exception, "Error occurred from source {ErrorSource}. Message: {ErrorMessage}", errorSource, errorMessage);
 
         // Implement retry delay for network-related errors
         if (exception is HttpRequestException or RequestException)

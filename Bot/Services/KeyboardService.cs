@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿// <copyright file="KeyboardService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.Logging;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Bot.Services;

@@ -1,4 +1,8 @@
-﻿namespace Bot.Services;
+﻿// <copyright file="AdminGoalStep.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Bot.Services;
 
 public partial class AdminStateService
 {

@@ -1,4 +1,8 @@
-﻿using Bot.Services;
+﻿// <copyright file="AdminHandler.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Microsoft.Extensions.Logging;
 using Services;
 using Telegram.Bot;

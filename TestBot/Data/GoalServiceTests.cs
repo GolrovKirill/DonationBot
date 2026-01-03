@@ -1,4 +1,12 @@
-﻿using Data;
+﻿// <copyright file="GoalServiceTests.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using System;
+using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
+using Data;
 using Data.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -7,188 +15,232 @@ using Services;
 
 namespace Services.Tests;
 
+/// <summary>
+/// Contains unit tests for the <see cref="GoalService"/> class.
+/// Tests user authorization, goal management, statistics generation, and progress tracking functionality.
+/// </summary>
 [TestFixture]
 public class GoalServiceTests
 {
-    private Mock<IDapperRepository> _repositoryMock;
-    private Mock<ILogger<GoalService>> _loggerMock;
-    private GoalService _goalService;
+    private Mock<IDapperRepository> repositoryMock;
+    private Mock<ILogger<GoalService>> loggerMock;
+    private GoalService goalService;
 
+    /// <summary>
+    /// Initializes test environment before each test execution.
+    /// Sets up mock dependencies, creates service instance, and configures Russian culture for formatting tests.
+    /// </summary>
     [SetUp]
     public void Setup()
     {
-        _repositoryMock = new Mock<IDapperRepository>();
-        _loggerMock = new Mock<ILogger<GoalService>>();
-        _goalService = new GoalService(_repositoryMock.Object, _loggerMock.Object);
+        repositoryMock = new Mock<IDapperRepository>();
+        loggerMock = new Mock<ILogger<GoalService>>();
+        goalService = new GoalService(repositoryMock.Object, loggerMock.Object);
+
+        Thread.CurrentThread.CurrentCulture = new CultureInfo("ru-RU");
+        Thread.CurrentThread.CurrentUICulture = new CultureInfo("ru-RU");
     }
 
+    /// <summary>
+    /// Tests that a user with admin privileges is correctly identified as an administrator.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task IsUserAdminAsync_AdminUser_ReturnsTrue()
+    public async Task IsUserAdminAsyncAdminUserReturnsTrue()
     {
         // Arrange
         var telegramId = 123L;
         var adminUser = new Users { Id = 1, TelegramId = telegramId, Admin = true };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
             .ReturnsAsync(adminUser);
 
         // Act
-        var result = await _goalService.IsUserAdminAsync(telegramId);
+        var result = await goalService.IsUserAdminAsync(telegramId);
 
         // Assert
         Assert.That(result, Is.True);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("User") && v.ToString().Contains("admin status: True")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("User") && v.ToString() !.Contains("admin status: True")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that a non-admin user is correctly identified as not having administrator privileges.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task IsUserAdminAsync_NonAdminUser_ReturnsFalse()
+    public async Task IsUserAdminAsyncNonAdminUserReturnsFalse()
     {
         // Arrange
         var telegramId = 123L;
         var regularUser = new Users { Id = 1, TelegramId = telegramId, Admin = false };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
             .ReturnsAsync(regularUser);
 
         // Act
-        var result = await _goalService.IsUserAdminAsync(telegramId);
+        var result = await goalService.IsUserAdminAsync(telegramId);
 
         // Assert
         Assert.That(result, Is.False);
     }
 
+    /// <summary>
+    /// Tests that when a user is not found in the database, the method returns false.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task IsUserAdminAsync_UserNotFound_ReturnsFalse()
+    public async Task IsUserAdminAsyncUserNotFoundReturnsFalse()
     {
         // Arrange
         var telegramId = 999L;
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
-            .ReturnsAsync((Users)null);
+            .ReturnsAsync((Users)null!);
 
         // Act
-        var result = await _goalService.IsUserAdminAsync(telegramId);
+        var result = await goalService.IsUserAdminAsync(telegramId);
 
         // Assert
         Assert.That(result, Is.False);
     }
 
+    /// <summary>
+    /// Tests that when the repository throws an exception, the method returns false and logs an error.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task IsUserAdminAsync_RepositoryThrows_ReturnsFalseAndLogsError()
+    public async Task IsUserAdminAsyncRepositoryThrowsReturnsFalseAndLogsError()
     {
         // Arrange
         var telegramId = 123L;
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _goalService.IsUserAdminAsync(telegramId);
+        var result = await goalService.IsUserAdminAsync(telegramId);
 
         // Assert
         Assert.That(result, Is.False);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error checking admin status")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error checking admin status")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when an active goal exists, it is successfully retrieved from the repository.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetActiveGoalAsync_GoalExists_ReturnsGoal()
+    public async Task GetActiveGoalAsyncGoalExistsReturnsGoal()
     {
         // Arrange
         var goal = new DonationGoal { Id = 1, Title = "Test Goal", TargetAmount = 10000, CurrentAmount = 5000 };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
         // Act
-        var result = await _goalService.GetActiveGoalAsync();
+        var result = await goalService.GetActiveGoalAsync();
 
         // Assert
         Assert.That(result, Is.EqualTo(goal));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Active goal retrieval succeeded")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Active goal retrieval succeeded")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when no active goal exists, the method returns null.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetActiveGoalAsync_NoGoal_ReturnsNull()
+    public async Task GetActiveGoalAsyncNoGoalReturnsNull()
     {
         // Arrange
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
-            .ReturnsAsync((DonationGoal)null);
+            .ReturnsAsync((DonationGoal)null!);
 
         // Act
-        var result = await _goalService.GetActiveGoalAsync();
+        var result = await goalService.GetActiveGoalAsync();
 
         // Assert
         Assert.That(result, Is.Null);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Active goal retrieval failed - no active goal")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Active goal retrieval failed - no active goal")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when the repository throws an exception, the method returns null and logs an error.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetActiveGoalAsync_RepositoryThrows_ReturnsNullAndLogsError()
+    public async Task GetActiveGoalAsyncRepositoryThrowsReturnsNullAndLogsError()
     {
         // Arrange
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _goalService.GetActiveGoalAsync();
+        var result = await goalService.GetActiveGoalAsync();
 
         // Assert
         Assert.That(result, Is.Null);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving active goal")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error retrieving active goal")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when an active goal exists, detailed statistics are correctly formatted and returned.
+    /// Includes verification of progress bars, percentage calculations, and formatted currency values.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_WithActiveGoal_ReturnsFormattedStats()
+    public async Task GetGoalStatsAsyncWithActiveGoalReturnsFormattedStats()
     {
         // Arrange
         var goal = new DonationGoal
@@ -198,23 +250,23 @@ public class GoalServiceTests
             Description = "Test Description",
             TargetAmount = 10000,
             CurrentAmount = 5000,
-            CreatedAt = new DateTime(2024, 1, 1)
+            CreatedAt = new DateTime(2024, 1, 1),
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountUsersForActiveGoals())
             .ReturnsAsync(25);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountDonationsForActiveGoals())
             .ReturnsAsync(50);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
         // Assert
         Assert.That(result, Is.Not.Null);
@@ -228,37 +280,45 @@ public class GoalServiceTests
         Assert.That(result, Contains.Substring("01.01.2024"));
         Assert.That(result, Contains.Substring("[■■■■■□□□□□]")); // 50% progress bar
 
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
-        _repositoryMock.Verify(x => x.GetCountUsersForActiveGoals(), Times.Once);
-        _repositoryMock.Verify(x => x.GetCountDonationsForActiveGoals(), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
+        repositoryMock.Verify(x => x.GetCountUsersForActiveGoals(), Times.Once);
+        repositoryMock.Verify(x => x.GetCountDonationsForActiveGoals(), Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when no active goal exists, an appropriate message is returned to the user.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_NoActiveGoal_ReturnsNoActiveGoalMessage()
+    public async Task GetGoalStatsAsyncNoActiveGoalReturnsNoActiveGoalMessage()
     {
         // Arrange
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
-            .ReturnsAsync((DonationGoal)null);
+            .ReturnsAsync((DonationGoal)null!);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
         // Assert
         Assert.That(result, Is.EqualTo("🎯 На данный момент нет активных целей для сбора."));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No active goal found for statistics")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("No active goal found for statistics")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that goal statistics handle zero target amounts correctly to prevent division by zero.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_ZeroTargetAmount_HandlesCorrectly()
+    public async Task GetGoalStatsAsyncZeroTargetAmountHandlesCorrectly()
     {
         // Arrange
         var goal = new DonationGoal
@@ -266,27 +326,27 @@ public class GoalServiceTests
             Id = 1,
             Title = "Test Goal",
             TargetAmount = 0,
-            CurrentAmount = 5000
+            CurrentAmount = 5000,
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountUsersForActiveGoals())
             .ReturnsAsync(10);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountDonationsForActiveGoals())
             .ReturnsAsync(20);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        var today = DateTime.Now.ToString("dd.MM.yyyy");
+        var today = DateTime.UtcNow.ToString("dd.MM.yyyy");
         Assert.That(result, Contains.Substring(
             $"🎯 **Test Goal** — 0₽ \n" +
             $"📝 Описание:  \n\n" +
@@ -297,8 +357,12 @@ public class GoalServiceTests
             $"[□□□□□□□□□□]"));
     }
 
+    /// <summary>
+    /// Tests that when goal progress reaches 100%, a full progress bar is displayed.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_FullProgress_ShowsFullProgressBar()
+    public async Task GetGoalStatsAsyncFullProgressShowsFullProgressBar()
     {
         // Arrange
         var goal = new DonationGoal
@@ -306,57 +370,65 @@ public class GoalServiceTests
             Id = 1,
             Title = "Test Goal",
             TargetAmount = 1000,
-            CurrentAmount = 1000
+            CurrentAmount = 1000,
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountUsersForActiveGoals())
             .ReturnsAsync(10);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountDonationsForActiveGoals())
             .ReturnsAsync(20);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
         // Assert
         Assert.That(result, Contains.Substring("[■■■■■■■■■■]")); // 100% progress bar
         Assert.That(result, Contains.Substring("100,0%"));
     }
 
+    /// <summary>
+    /// Tests that when repository operations fail, an error message is returned and the exception is logged.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_RepositoryThrows_ReturnsErrorMessage()
+    public async Task GetGoalStatsAsyncRepositoryThrowsReturnsErrorMessage()
     {
         // Arrange
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
         // Assert
         Assert.That(result, Is.EqualTo("🎯 На данный момент нет активных целей для сбора."));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving active goal")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error retrieving active goal")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that start command statistics are correctly formatted when an active goal exists.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetStartStats_WithActiveGoal_ReturnsFormattedStats()
+    public async Task GetStartStatsWithActiveGoalReturnsFormattedStats()
     {
         // Arrange
         var goal = new DonationGoal
@@ -365,15 +437,15 @@ public class GoalServiceTests
             Title = "Test Goal",
             Description = "Test Description",
             TargetAmount = 10000,
-            CurrentAmount = 7500
+            CurrentAmount = 7500,
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
         // Act
-        var result = await _goalService.GetStartStats();
+        var result = await goalService.GetStartStats();
 
         // Assert
         Assert.That(result, Is.Not.Null);
@@ -385,58 +457,70 @@ public class GoalServiceTests
         Assert.That(result, Contains.Substring("[■■■■■■■■□□]")); // 75% progress bar (rounded to 8 blocks out of 10)
     }
 
+    /// <summary>
+    /// Tests that when no active goal exists for start command, an appropriate message is returned.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetStartStats_NoActiveGoal_ReturnsNoActiveGoalMessage()
+    public async Task GetStartStatsNoActiveGoalReturnsNoActiveGoalMessage()
     {
         // Arrange
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
-            .ReturnsAsync((DonationGoal)null);
+            .ReturnsAsync((DonationGoal)null!);
 
         // Act
-        var result = await _goalService.GetStartStats();
+        var result = await goalService.GetStartStats();
 
         // Assert
         Assert.That(result, Is.EqualTo("🎯 На данный момент нет активных целей для сбора."));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No active goal found for start statistics")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("No active goal found for start statistics")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that repository exceptions during start statistics retrieval are handled gracefully.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetStartStats_RepositoryThrows_ReturnsErrorMessage()
+    public async Task GetStartStatsRepositoryThrowsReturnsErrorMessage()
     {
         // Arrange
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _goalService.GetStartStats();
+        var result = await goalService.GetStartStats();
 
         // Assert
         Assert.That(result, Is.EqualTo("🎯 На данный момент нет активных целей для сбора."));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving active goal")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error retrieving active goal")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that a valid goal is successfully created and persisted to the repository.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task CreateGoalAsync_ValidGoal_CreatesAndReturnsGoal()
+    public async Task CreateGoalAsyncValidGoalCreatesAndReturnsGoal()
     {
         // Arrange
         var title = "New Goal";
@@ -444,7 +528,7 @@ public class GoalServiceTests
         var targetAmount = 5000m;
         var createdGoal = new DonationGoal { Id = 1, Title = title, Description = description, TargetAmount = targetAmount };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateGoalAsync(It.Is<DonationGoal>(g =>
                 g.Title == title &&
                 g.Description == description &&
@@ -453,23 +537,26 @@ public class GoalServiceTests
             .ReturnsAsync(createdGoal);
 
         // Act
-        var result = await _goalService.CreateGoalAsync(title, description, targetAmount);
+        var result = await goalService.CreateGoalAsync(title, description, targetAmount);
 
         // Assert
         Assert.That(result, Is.EqualTo(createdGoal));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Goal created successfully") && v.ToString().Contains(title)),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Goal created successfully") && v.ToString() !.Contains(title)),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that repository exceptions during goal creation are properly logged and re-thrown.
+    /// </summary>
     [Test]
-    public void CreateGoalAsync_RepositoryThrows_LogsErrorAndThrows()
+    public void CreateGoalAsyncRepositoryThrowsLogsErrorAndThrows()
     {
         // Arrange
         var title = "New Goal";
@@ -477,32 +564,37 @@ public class GoalServiceTests
         var targetAmount = 5000m;
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateGoalAsync(It.IsAny<DonationGoal>()))
             .ThrowsAsync(exception);
 
         // Act & Assert
         Assert.ThrowsAsync<Exception>(() =>
-            _goalService.CreateGoalAsync(title, description, targetAmount));
+            goalService.CreateGoalAsync(title, description, targetAmount));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error creating goal") && v.ToString().Contains(title)),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error creating goal") && v.ToString() !.Contains(title)),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that the progress bar generation correctly converts percentage values to visual representations.
+    /// Includes edge cases like 0%, 100%, and values exceeding 100%.
+    /// </summary>
     [Test]
-    public void CreateProgressBar_VariousPercentages_ReturnsCorrectBars()
+    public void CreateProgressBarVariousPercentagesReturnsCorrectBars()
     {
         // Arrange
-        var service = new GoalService(_repositoryMock.Object, _loggerMock.Object);
+        var service = new GoalService(repositoryMock.Object, loggerMock.Object);
 
         // Use reflection to test private method
-        var method = typeof(GoalService).GetMethod("CreateProgressBar",
+        var method = typeof(GoalService).GetMethod(
+            "CreateProgressBar",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Act & Assert
@@ -523,8 +615,12 @@ public class GoalServiceTests
         Assert.That(result110, Is.EqualTo("[■■■■■■■■■■]")); // Over 100% still shows full bar
     }
 
+    /// <summary>
+    /// Tests that partial progress percentages are correctly rounded for visual progress bar display.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetGoalStatsAsync_PartialProgressBar_RoundsCorrectly()
+    public async Task GetGoalStatsAsyncPartialProgressBarRoundsCorrectly()
     {
         // Arrange
         var goal = new DonationGoal
@@ -532,27 +628,27 @@ public class GoalServiceTests
             Id = 1,
             Title = "Test Goal",
             TargetAmount = 1000,
-            CurrentAmount = 123 // 12.3%
+            CurrentAmount = 123, // 12.3%
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountUsersForActiveGoals())
             .ReturnsAsync(5);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetCountDonationsForActiveGoals())
             .ReturnsAsync(10);
 
         // Act
-        var result = await _goalService.GetGoalStatsAsync();
+        var result = await goalService.GetGoalStatsAsync();
 
-        var today = DateTime.Now.ToString("dd.MM.yyyy");
+        var today = DateTime.UtcNow.ToString("dd.MM.yyyy");
         Assert.That(result, Contains.Substring(
-            $"🎯 **Test Goal** — 1 000₽ \n" +
+            $"🎯 **Test Goal** — 1\u00A0000₽ \n" +
             $"📝 Описание:  \n\n" +
             $"📈 Количество пожертвований на текущую цель: 10\n" +
             $"🧮 Количество пожертвовавших: 5 \n" +

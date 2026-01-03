@@ -1,4 +1,8 @@
-﻿using Bot.Services;
+﻿// <copyright file="AdminStateServiceTests.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
@@ -6,31 +10,40 @@ using static Bot.Services.AdminStateService;
 
 namespace Bot.Tests.Services;
 
+/// <summary>
+/// Unit tests for the <see cref="AdminStateService"/> class.
+/// </summary>
 [TestFixture]
 public class AdminStateServiceTests
 {
-    private Mock<ILogger<AdminStateService>> _loggerMock;
-    private AdminStateService _adminStateService;
+    private Mock<ILogger<AdminStateService>> loggerMock;
+    private AdminStateService adminStateService;
 
+    /// <summary>
+    /// Sets up the test environment before each test execution.
+    /// </summary>
     [SetUp]
     public void Setup()
     {
-        _loggerMock = new Mock<ILogger<AdminStateService>>();
-        _adminStateService = new AdminStateService(_loggerMock.Object);
+        this.loggerMock = new Mock<ILogger<AdminStateService>>();
+        this.adminStateService = new AdminStateService(this.loggerMock.Object);
     }
 
+    /// <summary>
+    /// Tests that starting goal creation for a new user sets the initial state correctly.
+    /// </summary>
     [Test]
-    public void StartGoalCreation_NewUser_SetsInitialState()
+    public void StartGoalCreationNewUserSetsInitialState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
 
         // Act
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state, Is.Not.Null);
         Assert.That(state.ChatId, Is.EqualTo(chatId));
         Assert.That(state.CurrentStep, Is.EqualTo(AdminGoalStep.WaitingForTitle));
@@ -38,397 +51,454 @@ public class AdminStateServiceTests
         Assert.That(state.Description, Is.Null);
         Assert.That(state.TargetAmount, Is.Null);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Started goal creation for admin user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Started goal creation for admin user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that starting goal creation for an existing user overwrites the previous state.
+    /// </summary>
     [Test]
-    public void StartGoalCreation_ExistingUser_OverwritesState()
+    public void StartGoalCreationExistingUserOverwritesState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
-        // Act - запускаем создание цели заново
-        _adminStateService.StartGoalCreation(userId, 789L); // Новый chatId
+        // Act - start goal creation again
+        this.adminStateService.StartGoalCreation(userId, 789L); // New chatId
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state.ChatId, Is.EqualTo(789L));
         Assert.That(state.CurrentStep, Is.EqualTo(AdminGoalStep.WaitingForTitle));
     }
 
+    /// <summary>
+    /// Tests that getting state for a non-existent user returns null.
+    /// </summary>
     [Test]
-    public void GetState_NonExistentUser_ReturnsNull()
+    public void GetStateNonExistentUserReturnsNull()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
 
         // Act
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
 
         // Assert
         Assert.That(state, Is.Null);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No state found for user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("No state found for user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that getting state for an existing user returns the correct state.
+    /// </summary>
     [Test]
-    public void GetState_ExistingUser_ReturnsState()
+    public void GetStateExistingUserReturnsState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
         // Act
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
 
         // Assert
         Assert.That(state, Is.Not.Null);
         Assert.That(state.ChatId, Is.EqualTo(chatId));
     }
 
+    /// <summary>
+    /// Tests that setting title for an existing user updates the title and advances the step.
+    /// </summary>
     [Test]
-    public void SetTitle_ExistingUser_SetsTitleAndAdvancesStep()
+    public void SetTitleExistingUserSetsTitleAndAdvancesStep()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
         var title = "Новая цель";
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
         // Act
-        _adminStateService.SetTitle(userId, title);
+        this.adminStateService.SetTitle(userId, title);
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state.Title, Is.EqualTo(title));
         Assert.That(state.CurrentStep, Is.EqualTo(AdminGoalStep.WaitingForDescription));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Set title for user") && v.ToString().Contains(title)),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Set title for user") && v.ToString() !.Contains(title)),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting title for a non-existent user logs a warning.
+    /// </summary>
     [Test]
-    public void SetTitle_NonExistentUser_LogsWarning()
+    public void SetTitleNonExistentUserLogsWarning()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
         var title = "Новая цель";
 
         // Act
-        _adminStateService.SetTitle(userId, title);
+        this.adminStateService.SetTitle(userId, title);
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Attempted to set title for non-existent user state")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Attempted to set title for non-existent user state")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting description for an existing user updates the description and advances the step.
+    /// </summary>
     [Test]
-    public void SetDescription_ExistingUser_SetsDescriptionAndAdvancesStep()
+    public void SetDescriptionExistingUserSetsDescriptionAndAdvancesStep()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
         var description = "Описание цели";
-        _adminStateService.StartGoalCreation(userId, chatId);
-        _adminStateService.SetTitle(userId, "Название");
+        this.adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.SetTitle(userId, "Название");
 
         // Act
-        _adminStateService.SetDescription(userId, description);
+        this.adminStateService.SetDescription(userId, description);
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state.Description, Is.EqualTo(description));
         Assert.That(state.CurrentStep, Is.EqualTo(AdminGoalStep.WaitingForAmount));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Set description for user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Set description for user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting description for a non-existent user logs a warning.
+    /// </summary>
     [Test]
-    public void SetDescription_NonExistentUser_LogsWarning()
+    public void SetDescriptionNonExistentUserLogsWarning()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
         var description = "Описание цели";
 
         // Act
-        _adminStateService.SetDescription(userId, description);
+        this.adminStateService.SetDescription(userId, description);
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Attempted to set description for non-existent user state")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Attempted to set description for non-existent user state")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting amount for an existing user updates the amount and completes the process.
+    /// </summary>
     [Test]
-    public void SetAmount_ExistingUser_SetsAmountAndCompletesProcess()
+    public void SetAmountExistingUserSetsAmountAndCompletesProcess()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
         var amount = 5000m;
-        _adminStateService.StartGoalCreation(userId, chatId);
-        _adminStateService.SetTitle(userId, "Название");
-        _adminStateService.SetDescription(userId, "Описание");
+        this.adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.SetTitle(userId, "Название");
+        this.adminStateService.SetDescription(userId, "Описание");
 
         // Act
-        _adminStateService.SetAmount(userId, amount);
+        this.adminStateService.SetAmount(userId, amount);
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state.TargetAmount, Is.EqualTo(amount));
         Assert.That(state.CurrentStep, Is.EqualTo(AdminGoalStep.None));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Set amount for user") && v.ToString().Contains(amount.ToString())),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Set amount for user") && v.ToString() !.Contains(amount.ToString())),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting amount for a non-existent user logs a warning.
+    /// </summary>
     [Test]
-    public void SetAmount_NonExistentUser_LogsWarning()
+    public void SetAmountNonExistentUserLogsWarning()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
         var amount = 5000m;
 
         // Act
-        _adminStateService.SetAmount(userId, amount);
+        this.adminStateService.SetAmount(userId, amount);
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Attempted to set amount for non-existent user state")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Attempted to set amount for non-existent user state")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that canceling goal creation for an existing user removes the state.
+    /// </summary>
     [Test]
-    public void CancelGoalCreation_ExistingUser_RemovesState()
+    public void CancelGoalCreationExistingUserRemovesState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
         // Act
-        _adminStateService.CancelGoalCreation(userId);
+        this.adminStateService.CancelGoalCreation(userId);
 
         // Assert
-        var state = _adminStateService.GetState(userId);
+        var state = this.adminStateService.GetState(userId);
         Assert.That(state, Is.Null);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Canceled goal creation for user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Canceled goal creation for user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that canceling goal creation for a non-existent user logs a debug message.
+    /// </summary>
     [Test]
-    public void CancelGoalCreation_NonExistentUser_LogsDebug()
+    public void CancelGoalCreationNonExistentUserLogsDebug()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
 
         // Act
-        _adminStateService.CancelGoalCreation(userId);
+        this.adminStateService.CancelGoalCreation(userId);
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Attempted to cancel non-existent goal creation for user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Attempted to cancel non-existent goal creation for user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that a user in the goal creation process returns true.
+    /// </summary>
     [Test]
-    public void IsUserCreatingGoal_UserInProcess_ReturnsTrue()
+    public void IsUserCreatingGoalUserInProcessReturnsTrue()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.StartGoalCreation(userId, chatId);
 
         // Act
-        var isCreating = _adminStateService.IsUserCreatingGoal(userId);
+        var isCreating = this.adminStateService.IsUserCreatingGoal(userId);
 
         // Assert
         Assert.That(isCreating, Is.True);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("User") && v.ToString().Contains("goal creation status: True")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("User") && v.ToString() !.Contains("goal creation status: True")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that a user not in the goal creation process returns false.
+    /// </summary>
     [Test]
-    public void IsUserCreatingGoal_UserNotInProcess_ReturnsFalse()
+    public void IsUserCreatingGoalUserNotInProcessReturnsFalse()
     {
         // Arrange
-        var userId = 123L; // Пользователь не начинал создание цели
+        var userId = 123L; // User has not started goal creation
 
         // Act
-        var isCreating = _adminStateService.IsUserCreatingGoal(userId);
+        var isCreating = this.adminStateService.IsUserCreatingGoal(userId);
 
         // Assert
         Assert.That(isCreating, Is.False);
     }
 
+    /// <summary>
+    /// Tests that a user who completed the goal creation process returns false.
+    /// </summary>
     [Test]
-    public void IsUserCreatingGoal_UserCompletedProcess_ReturnsFalse()
-    {
-        // Arrange
-        var userId = 123L;
-        var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
-        _adminStateService.SetTitle(userId, "Название");
-        _adminStateService.SetDescription(userId, "Описание");
-        _adminStateService.SetAmount(userId, 5000m); // Завершаем процесс
-
-        // Act
-        var isCreating = _adminStateService.IsUserCreatingGoal(userId);
-
-        // Assert
-        Assert.That(isCreating, Is.False);
-    }
-
-    [Test]
-    public void IsUserCreatingGoal_UserCancelledProcess_ReturnsFalse()
+    public void IsUserCreatingGoalUserCompletedProcessReturnsFalse()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _adminStateService.StartGoalCreation(userId, chatId);
-        _adminStateService.CancelGoalCreation(userId); // Отменяем процесс
+        this.adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.SetTitle(userId, "Название");
+        this.adminStateService.SetDescription(userId, "Описание");
+        this.adminStateService.SetAmount(userId, 5000m); // Complete the process
 
         // Act
-        var isCreating = _adminStateService.IsUserCreatingGoal(userId);
+        var isCreating = this.adminStateService.IsUserCreatingGoal(userId);
 
         // Assert
         Assert.That(isCreating, Is.False);
     }
 
+    /// <summary>
+    /// Tests that a user who cancelled the goal creation process returns false.
+    /// </summary>
     [Test]
-    public void GetActiveStateCount_NoUsers_ReturnsZero()
+    public void IsUserCreatingGoalUserCancelledProcessReturnsFalse()
     {
-        // Arrange - нет активных пользователей
+        // Arrange
+        var userId = 123L;
+        var chatId = 456L;
+        this.adminStateService.StartGoalCreation(userId, chatId);
+        this.adminStateService.CancelGoalCreation(userId); // Cancel the process
 
         // Act
-        var count = _adminStateService.GetActiveStateCount();
+        var isCreating = this.adminStateService.IsUserCreatingGoal(userId);
+
+        // Assert
+        Assert.That(isCreating, Is.False);
+    }
+
+    /// <summary>
+    /// Tests that the active state count returns zero when there are no users.
+    /// </summary>
+    [Test]
+    public void GetActiveStateCountNoUsersReturnsZero()
+    {
+        // Arrange - no active users
+
+        // Act
+        var count = this.adminStateService.GetActiveStateCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Trace,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Current active admin states: 0")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Current active admin states: 0")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that the active state count returns the correct count for multiple users.
+    /// </summary>
     [Test]
-    public void GetActiveStateCount_MultipleUsers_ReturnsCorrectCount()
+    public void GetActiveStateCountMultipleUsersReturnsCorrectCount()
     {
         // Arrange
-        _adminStateService.StartGoalCreation(123L, 456L);
-        _adminStateService.StartGoalCreation(124L, 457L);
-        _adminStateService.StartGoalCreation(125L, 458L);
+        this.adminStateService.StartGoalCreation(123L, 456L);
+        this.adminStateService.StartGoalCreation(124L, 457L);
+        this.adminStateService.StartGoalCreation(125L, 458L);
 
         // Act
-        var count = _adminStateService.GetActiveStateCount();
+        var count = this.adminStateService.GetActiveStateCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(3));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Trace,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Current active admin states: 3")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Current active admin states: 3")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that the active state count is updated after cancellation.
+    /// </summary>
     [Test]
-    public void GetActiveStateCount_AfterCancellation_ReturnsUpdatedCount()
+    public void GetActiveStateCountAfterCancellationReturnsUpdatedCount()
     {
         // Arrange
-        _adminStateService.StartGoalCreation(123L, 456L);
-        _adminStateService.StartGoalCreation(124L, 457L);
-        _adminStateService.StartGoalCreation(125L, 458L);
+        this.adminStateService.StartGoalCreation(123L, 456L);
+        this.adminStateService.StartGoalCreation(124L, 457L);
+        this.adminStateService.StartGoalCreation(125L, 458L);
 
-        // Act - отменяем одного пользователя
-        _adminStateService.CancelGoalCreation(124L);
-        var count = _adminStateService.GetActiveStateCount();
+        // Act - cancel one user
+        this.adminStateService.CancelGoalCreation(124L);
+        var count = this.adminStateService.GetActiveStateCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(2));
     }
 
+    /// <summary>
+    /// Tests that multiple users have independent states.
+    /// </summary>
     [Test]
-    public void MultipleUsers_IndependentStates()
+    public void MultipleUsersIndependentStates()
     {
         // Arrange
         var user1 = 123L;
@@ -437,15 +507,15 @@ public class AdminStateServiceTests
         var chat2 = 457L;
 
         // Act
-        _adminStateService.StartGoalCreation(user1, chat1);
-        _adminStateService.StartGoalCreation(user2, chat2);
+        this.adminStateService.StartGoalCreation(user1, chat1);
+        this.adminStateService.StartGoalCreation(user2, chat2);
 
-        _adminStateService.SetTitle(user1, "Цель пользователя 1");
-        _adminStateService.SetTitle(user2, "Цель пользователя 2");
+        this.adminStateService.SetTitle(user1, "Цель пользователя 1");
+        this.adminStateService.SetTitle(user2, "Цель пользователя 2");
 
         // Assert
-        var state1 = _adminStateService.GetState(user1);
-        var state2 = _adminStateService.GetState(user2);
+        var state1 = this.adminStateService.GetState(user1);
+        var state2 = this.adminStateService.GetState(user2);
 
         Assert.That(state1.Title, Is.EqualTo("Цель пользователя 1"));
         Assert.That(state2.Title, Is.EqualTo("Цель пользователя 2"));

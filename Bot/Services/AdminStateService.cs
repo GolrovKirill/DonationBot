@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿// <copyright file="AdminStateService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.Logging;
 
 namespace Bot.Services;
 
@@ -9,37 +13,6 @@ public partial class AdminStateService
 {
     private readonly ILogger<AdminStateService> logger;
     private readonly Dictionary<long, AdminGoalCreationState> adminStates = [];
-
-    /// <summary>
-    /// Represents the state of an admin user during goal creation process.
-    /// </summary>
-    public class AdminGoalCreationState
-    {
-        /// <summary>
-        /// Gets or sets the chat identifier where goal creation is taking place.
-        /// </summary>
-        public long ChatId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the goal title.
-        /// </summary>
-        public string? Title { get; set; }
-
-        /// <summary>
-        /// Gets or sets the goal description.
-        /// </summary>
-        public string? Description { get; set; }
-
-        /// <summary>
-        /// Gets or sets the target amount for the goal.
-        /// </summary>
-        public decimal? TargetAmount { get; set; }
-
-        /// <summary>
-        /// Gets or sets the current step in the goal creation process.
-        /// </summary>
-        public AdminGoalStep CurrentStep { get; set; } = AdminGoalStep.None;
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminStateService"/> class.
@@ -186,5 +159,36 @@ public partial class AdminStateService
         var count = adminStates.Count;
         logger.LogTrace("Current active admin states: {Count}", count);
         return count;
+    }
+
+    /// <summary>
+    /// Represents the state of an admin user during goal creation process.
+    /// </summary>
+    public class AdminGoalCreationState
+    {
+        /// <summary>
+        /// Gets or sets the chat identifier where goal creation is taking place.
+        /// </summary>
+        public long ChatId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the goal title.
+        /// </summary>
+        public string? Title { get; set; }
+
+        /// <summary>
+        /// Gets or sets the goal description.
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Gets or sets the target amount for the goal.
+        /// </summary>
+        public decimal? TargetAmount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the current step in the goal creation process.
+        /// </summary>
+        public AdminGoalStep CurrentStep { get; set; } = AdminGoalStep.None;
     }
 }

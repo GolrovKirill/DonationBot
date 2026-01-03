@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿// <copyright file="ReceiverService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;

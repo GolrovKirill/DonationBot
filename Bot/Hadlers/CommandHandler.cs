@@ -1,4 +1,8 @@
-﻿using Bot.Services;
+﻿// <copyright file="CommandHandler.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Data.Models;
 using Microsoft.Extensions.Logging;
 using Services;

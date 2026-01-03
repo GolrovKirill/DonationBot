@@ -1,4 +1,8 @@
-﻿using Bot.Services;
+﻿// <copyright file="PaymentHandler.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Configurations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,14 +19,14 @@ namespace Bot.Handlers;
 /// </summary>
 public class PaymentHandler
 {
+    private const int MinimumDonationAmount = 60;
+    private const int MaximumDonationAmount = 100000;
+
     private readonly ILogger<PaymentHandler> logger;
     private readonly IGoalService goalService;
     private readonly IDonationService donationService;
     private readonly UserStateService userStateService;
     private readonly BotConfig botConfig;
-
-    private const int MinimumDonationAmount = 60;
-    private const int MaximumDonationAmount = 100000;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PaymentHandler"/> class.

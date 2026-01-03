@@ -1,4 +1,8 @@
-﻿using Data.Models;
+﻿// <copyright file="IDapperRepository.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Data.Models;
 
 namespace Data;
 

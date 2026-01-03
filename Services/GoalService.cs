@@ -1,4 +1,8 @@
-﻿using Data;
+﻿// <copyright file="GoalService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Data;
 using Data.Models;
 using Microsoft.Extensions.Logging;
 
@@ -63,44 +67,6 @@ public class GoalService : IGoalService
         {
             logger.LogError(ex, "Error retrieving active goal");
             return null;
-        }
-    }
-
-    private async Task<int> GetActiveUsersGoalAsync()
-    {
-        logger.LogDebug("Retrieving active users count for goal");
-
-        try
-        {
-            var count = await repository.GetCountUsersForActiveGoals();
-
-            logger.LogDebug("Retrieved {UserCount} active users for goal", count);
-
-            return count;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving active users count for goal");
-            return 0;
-        }
-    }
-
-    private async Task<int> GetActiveDonationsGoalAsync()
-    {
-        logger.LogDebug("Retrieving active donations count for goal");
-
-        try
-        {
-            var count = await repository.GetCountDonationsForActiveGoals();
-
-            logger.LogDebug("Retrieved {DonationCount} active donations for goal", count);
-
-            return count;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving active donations count for goal");
-            return 0;
         }
     }
 
@@ -175,25 +141,6 @@ public class GoalService : IGoalService
         }
     }
 
-    /// <summary>
-    /// Creates a visual progress bar representation.
-    /// </summary>
-    /// <param name="percent">The completion percentage.</param>
-    /// <returns>A string representing the progress bar.</returns>
-    private string CreateProgressBar(double percent)
-    {
-        if (percent >= 100)
-        {
-            return $"[{new string('■', 10)}]";
-        }
-        else
-        {
-            var filled = (int)Math.Round(percent / 10);
-            var empty = 10 - filled;
-            return $"[{new string('■', filled)}{new string('□', empty)}]";
-        }
-    }
-
     /// <inheritdoc/>
     public async Task<DonationGoal> CreateGoalAsync(string title, string description, decimal targetAmount)
     {
@@ -219,6 +166,63 @@ public class GoalService : IGoalService
         {
             logger.LogError(ex, "Error creating goal: {Title}", title);
             throw;
+        }
+    }
+
+    private async Task<int> GetActiveUsersGoalAsync()
+    {
+        logger.LogDebug("Retrieving active users count for goal");
+
+        try
+        {
+            var count = await repository.GetCountUsersForActiveGoals();
+
+            logger.LogDebug("Retrieved {UserCount} active users for goal", count);
+
+            return count;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving active users count for goal");
+            return 0;
+        }
+    }
+
+    private async Task<int> GetActiveDonationsGoalAsync()
+    {
+        logger.LogDebug("Retrieving active donations count for goal");
+
+        try
+        {
+            var count = await repository.GetCountDonationsForActiveGoals();
+
+            logger.LogDebug("Retrieved {DonationCount} active donations for goal", count);
+
+            return count;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving active donations count for goal");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Creates a visual progress bar representation.
+    /// </summary>
+    /// <param name="percent">The completion percentage.</param>
+    /// <returns>A string representing the progress bar.</returns>
+    private string CreateProgressBar(double percent)
+    {
+        if (percent >= 100)
+        {
+            return $"[{new string('■', 10)}]";
+        }
+        else
+        {
+            var filled = (int)Math.Round(percent / 10);
+            var empty = 10 - filled;
+            return $"[{new string('■', filled)}{new string('□', empty)}]";
         }
     }
 }

@@ -1,4 +1,10 @@
-﻿using Data;
+﻿// <copyright file="DonationServiceTests.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using System;
+using System.Threading.Tasks;
+using Data;
 using Data.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -7,52 +13,71 @@ using Services;
 
 namespace Services.Tests;
 
+/// <summary>
+/// Contains unit tests for the <see cref="DonationService"/> class.
+/// Tests various scenarios including user management, donation processing,
+/// exception handling, and logging behavior.
+/// </summary>
 [TestFixture]
 public class DonationServiceTests
 {
-    private Mock<IDapperRepository> _repositoryMock;
-    private Mock<ILogger<DonationService>> _loggerMock;
-    private DonationService _donationService;
+    private Mock<IDapperRepository> repositoryMock;
+    private Mock<ILogger<DonationService>> loggerMock;
+    private DonationService donationService;
 
+    /// <summary>
+    /// Initializes test environment before each test execution.
+    /// Creates mock instances for repository and logger, and instantiates the donation service.
+    /// </summary>
     [SetUp]
     public void Setup()
     {
-        _repositoryMock = new Mock<IDapperRepository>();
-        _loggerMock = new Mock<ILogger<DonationService>>();
-        _donationService = new DonationService(_repositoryMock.Object, _loggerMock.Object);
+        repositoryMock = new Mock<IDapperRepository>();
+        loggerMock = new Mock<ILogger<DonationService>>();
+        donationService = new DonationService(repositoryMock.Object, loggerMock.Object);
     }
 
+    /// <summary>
+    /// Tests that when a user already exists in the database,
+    /// the method returns the existing user without creating a new one.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetOrCreateUserAsync_ExistingUser_ReturnsUser()
+    public async Task GetOrCreateUserAsyncExistingUserReturnsUser()
     {
         // Arrange
         var telegramId = 123L;
         var existingUser = new Users { Id = 1, TelegramId = telegramId, Username = "testuser", FirstName = "Test", LastName = "User" };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
             .ReturnsAsync(existingUser);
 
         // Act
-        var result = await _donationService.GetOrCreateUserAsync(telegramId, "testuser", "Test", "User");
+        var result = await donationService.GetOrCreateUserAsync(telegramId, "testuser", "Test", "User");
 
         // Assert
         Assert.That(result, Is.EqualTo(existingUser));
-        _repositoryMock.Verify(x => x.GetUserByTelegramIdAsync(telegramId), Times.Once);
-        _repositoryMock.Verify(x => x.CreateUserAsync(It.IsAny<Users>()), Times.Never);
+        repositoryMock.Verify(x => x.GetUserByTelegramIdAsync(telegramId), Times.Once);
+        repositoryMock.Verify(x => x.CreateUserAsync(It.IsAny<Users>()), Times.Never);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Found existing user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Found existing user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when a user does not exist in the database,
+    /// the method creates a new user with the provided information.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetOrCreateUserAsync_NewUser_CreatesUser()
+    public async Task GetOrCreateUserAsyncNewUserCreatesUser()
     {
         // Arrange
         var telegramId = 123L;
@@ -63,14 +88,14 @@ public class DonationServiceTests
             Username = "newuser",
             FirstName = "New",
             LastName = "User",
-            Admin = false
+            Admin = false,
         };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
-            .ReturnsAsync((Users)null);
+            .ReturnsAsync((Users)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateUserAsync(It.Is<Users>(u =>
                 u.TelegramId == telegramId &&
                 u.Username == "newuser" &&
@@ -80,35 +105,40 @@ public class DonationServiceTests
             .ReturnsAsync(newUser);
 
         // Act
-        var result = await _donationService.GetOrCreateUserAsync(telegramId, "newuser", "New", "User");
+        var result = await donationService.GetOrCreateUserAsync(telegramId, "newuser", "New", "User");
 
         // Assert
         Assert.That(result, Is.EqualTo(newUser));
-        _repositoryMock.Verify(x => x.GetUserByTelegramIdAsync(telegramId), Times.Once);
-        _repositoryMock.Verify(x => x.CreateUserAsync(It.IsAny<Users>()), Times.Once);
+        repositoryMock.Verify(x => x.GetUserByTelegramIdAsync(telegramId), Times.Once);
+        repositoryMock.Verify(x => x.CreateUserAsync(It.IsAny<Users>()), Times.Once);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Creating new user") && v.ToString().Contains("newuser")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Creating new user") && v.ToString() !.Contains("newuser")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that the method correctly handles null values for user properties
+    /// when creating a new user.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task GetOrCreateUserAsync_NullNames_HandlesCorrectly()
+    public async Task GetOrCreateUserAsyncNullNamesHandlesCorrectly()
     {
         // Arrange
         var telegramId = 123L;
         var newUser = new Users { Id = 1, TelegramId = telegramId, Username = null, FirstName = null, LastName = null };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
-            .ReturnsAsync((Users)null);
+            .ReturnsAsync((Users)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateUserAsync(It.Is<Users>(u =>
                 u.TelegramId == telegramId &&
                 u.Username == null &&
@@ -117,39 +147,48 @@ public class DonationServiceTests
             .ReturnsAsync(newUser);
 
         // Act
-        var result = await _donationService.GetOrCreateUserAsync(telegramId, null, null, null);
+        var result = await donationService.GetOrCreateUserAsync(telegramId, null, null, null);
 
         // Assert
         Assert.That(result, Is.EqualTo(newUser));
     }
 
+    /// <summary>
+    /// Tests that when the repository throws an exception,
+    /// the method logs the error and rethrows the exception.
+    /// </summary>
     [Test]
-    public async Task GetOrCreateUserAsync_RepositoryThrows_LogsErrorAndThrows()
+    public void GetOrCreateUserAsyncRepositoryThrowsLogsErrorAndThrows()
     {
         // Arrange
         var telegramId = 123L;
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetUserByTelegramIdAsync(telegramId))
             .ThrowsAsync(exception);
 
         // Act & Assert
         Assert.ThrowsAsync<Exception>(() =>
-            _donationService.GetOrCreateUserAsync(telegramId, "testuser", "Test", "User"));
+            donationService.GetOrCreateUserAsync(telegramId, "testuser", "Test", "User"));
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error getting or creating user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error getting or creating user")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that a successful donation is processed correctly,
+    /// creating a donation record and updating the goal amount.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_SuccessfulDonation_ReturnsTrue()
+    public async Task ProcessDonationAsyncSuccessfulDonationReturnsTrue()
     {
         // Arrange
         var userId = 123L;
@@ -159,15 +198,15 @@ public class DonationServiceTests
         var goal = new DonationGoal { Id = 1, Title = "Test Goal", TargetAmount = 10000, CurrentAmount = 0 };
         var donation = new Donation { Id = 1, UserTelegramId = userId, GoalId = goal.Id, Amount = amount, Currency = currency, ProviderPaymentId = donationId };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateDonationAsync(It.Is<Donation>(d =>
                 d.UserTelegramId == userId &&
                 d.GoalId == goal.Id &&
@@ -177,33 +216,38 @@ public class DonationServiceTests
                 d.Status == "completed")))
             .ReturnsAsync(donation);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount))
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.True);
 
-        _repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
-        _repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount), Times.Once);
+        repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
+        repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount), Times.Once);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Successfully processed donation")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Successfully processed donation")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when a duplicate donation is detected (same donation ID),
+    /// the method returns true without creating a new donation record.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_DuplicateDonation_ReturnsTrue()
+    public async Task ProcessDonationAsyncDuplicateDonationReturnsTrue()
     {
         // Arrange
         var userId = 123L;
@@ -213,33 +257,38 @@ public class DonationServiceTests
         var donationId = "donation_123";
         var existingDonation = new Donation { Id = 1, UserTelegramId = userId, GoalId = goalId, Amount = amount, CreatedAt = DateTime.UtcNow };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
             .ReturnsAsync(existingDonation);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.True);
 
-        _repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Never);
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Never);
-        _repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+        repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Never);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Never);
+        repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("has already been processed")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("has already been processed")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when there is no active donation goal,
+    /// the method returns false and logs an error.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_NoActiveGoal_ReturnsFalse()
+    public async Task ProcessDonationAsyncNoActiveGoalReturnsFalse()
     {
         // Arrange
         var userId = 123L;
@@ -247,37 +296,42 @@ public class DonationServiceTests
         var currency = "RUB";
         var donationId = "donation_123";
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
-            .ReturnsAsync((DonationGoal)null);
+            .ReturnsAsync((DonationGoal)null!);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.False);
 
-        _repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Never);
-        _repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+        repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Never);
+        repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No active goal found for donation")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("No active goal found for donation")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when creating a donation record throws an exception,
+    /// the method returns false and logs the error.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_CreateDonationThrows_ReturnsFalse()
+    public async Task ProcessDonationAsyncCreateDonationThrowsReturnsFalse()
     {
         // Arrange
         var userId = 123L;
@@ -287,41 +341,46 @@ public class DonationServiceTests
         var goal = new DonationGoal { Id = 1, Title = "Test Goal" };
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateDonationAsync(It.IsAny<Donation>()))
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.False);
 
-        _repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
-        _repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+        repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
+        repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error processing donation")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error processing donation")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that when updating the goal amount throws an exception,
+    /// the method returns false and logs the error.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_UpdateGoalThrows_ReturnsFalse()
+    public async Task ProcessDonationAsyncUpdateGoalThrowsReturnsFalse()
     {
         // Arrange
         var userId = 123L;
@@ -332,45 +391,49 @@ public class DonationServiceTests
         var donation = new Donation { Id = 1, UserTelegramId = userId, GoalId = goal.Id, Amount = amount };
         var exception = new Exception("Database error");
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateDonationAsync(It.IsAny<Donation>()))
             .ReturnsAsync(donation);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount))
             .ThrowsAsync(exception);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.False);
 
-        _repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
-        _repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
-        _repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount), Times.Once);
+        repositoryMock.Verify(x => x.GetDonationAsync(donationId), Times.Once);
+        repositoryMock.Verify(x => x.GetActiveGoalAsync(), Times.Once);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.IsAny<Donation>()), Times.Once);
+        repositoryMock.Verify(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount), Times.Once);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error processing donation")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Error processing donation")),
                 exception,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that the donation record is created with the correct status ("completed").
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_ValidatesDonationStatus()
+    public async Task ProcessDonationAsyncValidatesDonationStatus()
     {
         // Arrange
         var userId = 123L;
@@ -380,34 +443,38 @@ public class DonationServiceTests
         var goal = new DonationGoal { Id = 1, Title = "Test Goal" };
         var donation = new Donation { Id = 1, UserTelegramId = userId, GoalId = goal.Id, Amount = amount };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateDonationAsync(It.Is<Donation>(d => d.Status == "completed")))
             .ReturnsAsync(donation);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount))
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        var result = await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert
         Assert.That(result, Is.True);
 
         // Проверяем, что статус доната установлен в "completed"
-        _repositoryMock.Verify(x => x.CreateDonationAsync(It.Is<Donation>(d => d.Status == "completed")), Times.Once);
+        repositoryMock.Verify(x => x.CreateDonationAsync(It.Is<Donation>(d => d.Status == "completed")), Times.Once);
     }
 
+    /// <summary>
+    /// Tests that appropriate log messages are recorded during donation processing.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public async Task ProcessDonationAsync_LogsAppropriateMessages()
+    public async Task ProcessDonationAsyncLogsAppropriateMessages()
     {
         // Arrange
         var userId = 123L;
@@ -417,51 +484,51 @@ public class DonationServiceTests
         var goal = new DonationGoal { Id = 1, Title = "Test Goal" };
         var donation = new Donation { Id = 1, UserTelegramId = userId, GoalId = goal.Id, Amount = amount };
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetDonationAsync(donationId))
-            .ReturnsAsync((Donation)null);
+            .ReturnsAsync((Donation)null!);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.GetActiveGoalAsync())
             .ReturnsAsync(goal);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.CreateDonationAsync(It.IsAny<Donation>()))
             .ReturnsAsync(donation);
 
-        _repositoryMock
+        repositoryMock
             .Setup(x => x.UpdateGoalCurrentAmountAsync(goal.Id, amount))
             .Returns(Task.CompletedTask);
 
         // Act
-        await _donationService.ProcessDonationAsync(userId, amount, currency, donationId);
+        await donationService.ProcessDonationAsync(userId, amount, currency, donationId);
 
         // Assert - проверяем последовательность логирования
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Processing donation")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Processing donation")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Found active goal")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Found active goal")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
 
-        _loggerMock.Verify(
+        loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Created donation record")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Created donation record")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 }

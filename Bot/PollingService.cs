@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿// <copyright file="PollingService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -26,6 +30,20 @@ public class PollingService : BackgroundService
     {
         this.serviceProvider = serviceProvider;
         this.logger = logger;
+    }
+
+    /// <summary>
+    /// Triggered when the application host is performing a graceful shutdown.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token indicating that shutdown should be no longer graceful.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Polling service is stopping gracefully");
+
+        await base.StopAsync(cancellationToken);
+
+        logger.LogInformation("Polling service stopped gracefully");
     }
 
     /// <summary>
@@ -106,19 +124,5 @@ public class PollingService : BackgroundService
         {
             logger.LogDebug("Cooldown delay was cancelled");
         }
-    }
-
-    /// <summary>
-    /// Triggered when the application host is performing a graceful shutdown.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token indicating that shutdown should be no longer graceful.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public override async Task StopAsync(CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Polling service is stopping gracefully");
-
-        await base.StopAsync(cancellationToken);
-
-        logger.LogInformation("Polling service stopped gracefully");
     }
 }

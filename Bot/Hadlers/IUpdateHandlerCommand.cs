@@ -1,4 +1,8 @@
-﻿using Telegram.Bot;
+﻿// <copyright file="IUpdateHandlerCommand.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace Bot.Handlers;

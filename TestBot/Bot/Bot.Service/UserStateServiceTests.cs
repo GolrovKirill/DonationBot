@@ -1,417 +1,480 @@
-﻿using Bot.Services;
+﻿// <copyright file="UserStateServiceTests.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 
 namespace Bot.Tests.Services;
 
+/// <summary>
+/// Unit tests for the <see cref="UserStateService"/> class.
+/// </summary>
 [TestFixture]
 public class UserStateServiceTests
 {
-    private Mock<ILogger<UserStateService>> _loggerMock;
-    private UserStateService _userStateService;
+    private Mock<ILogger<UserStateService>> loggerMock;
+    private UserStateService userStateService;
 
+    /// <summary>
+    /// Sets up the test environment before each test execution.
+    /// </summary>
     [SetUp]
     public void Setup()
     {
-        _loggerMock = new Mock<ILogger<UserStateService>>();
-        _userStateService = new UserStateService(_loggerMock.Object);
+        this.loggerMock = new Mock<ILogger<UserStateService>>();
+        this.userStateService = new UserStateService(this.loggerMock.Object);
     }
 
+    /// <summary>
+    /// Tests that setting waiting for amount for a new user sets the state correctly.
+    /// </summary>
     [Test]
-    public void SetWaitingForAmount_NewUser_SetsState()
+    public void SetWaitingForAmountNewUserSetsState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
 
         // Act
-        _userStateService.SetWaitingForAmount(userId, chatId);
+        this.userStateService.SetWaitingForAmount(userId, chatId);
 
         // Assert
-        var isWaiting = _userStateService.IsWaitingForAmount(userId, chatId);
+        var isWaiting = this.userStateService.IsWaitingForAmount(userId, chatId);
         Assert.That(isWaiting, Is.True);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("User") && v.ToString().Contains("set to waiting for amount input")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("User") && v.ToString() !.Contains("set to waiting for amount input")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that setting waiting for amount for an existing user updates the state.
+    /// </summary>
     [Test]
-    public void SetWaitingForAmount_ExistingUser_UpdatesState()
+    public void SetWaitingForAmountExistingUserUpdatesState()
     {
         // Arrange
         var userId = 123L;
-        _userStateService.SetWaitingForAmount(userId, 456L);
+        this.userStateService.SetWaitingForAmount(userId, 456L);
 
-        // Act - обновляем chatId для того же пользователя
-        _userStateService.SetWaitingForAmount(userId, 789L);
+        // Act - update chatId for the same user
+        this.userStateService.SetWaitingForAmount(userId, 789L);
 
         // Assert
-        var isWaitingOldChat = _userStateService.IsWaitingForAmount(userId, 456L);
-        var isWaitingNewChat = _userStateService.IsWaitingForAmount(userId, 789L);
+        var isWaitingOldChat = this.userStateService.IsWaitingForAmount(userId, 456L);
+        var isWaitingNewChat = this.userStateService.IsWaitingForAmount(userId, 789L);
 
         Assert.That(isWaitingOldChat, Is.False);
         Assert.That(isWaitingNewChat, Is.True);
     }
 
+    /// <summary>
+    /// Tests that checking waiting for amount for a user not waiting returns false.
+    /// </summary>
     [Test]
-    public void IsWaitingForAmount_UserNotWaiting_ReturnsFalse()
+    public void IsWaitingForAmountUserNotWaitingReturnsFalse()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
 
         // Act
-        var isWaiting = _userStateService.IsWaitingForAmount(userId, chatId);
+        var isWaiting = this.userStateService.IsWaitingForAmount(userId, chatId);
 
         // Assert
         Assert.That(isWaiting, Is.False);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Checked waiting for amount status") && v.ToString().Contains("False")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Checked waiting for amount status") && v.ToString() !.Contains("False")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that checking waiting for amount for a user waiting in a different chat returns false.
+    /// </summary>
     [Test]
-    public void IsWaitingForAmount_UserWaitingInDifferentChat_ReturnsFalse()
+    public void IsWaitingForAmountUserWaitingInDifferentChatReturnsFalse()
     {
         // Arrange
         var userId = 123L;
-        _userStateService.SetWaitingForAmount(userId, 456L);
+        this.userStateService.SetWaitingForAmount(userId, 456L);
 
         // Act
-        var isWaiting = _userStateService.IsWaitingForAmount(userId, 789L); // Другой chatId
+        var isWaiting = this.userStateService.IsWaitingForAmount(userId, 789L); // Different chatId
 
         // Assert
         Assert.That(isWaiting, Is.False);
     }
 
+    /// <summary>
+    /// Tests that checking waiting for amount for a user waiting in the same chat returns true.
+    /// </summary>
     [Test]
-    public void IsWaitingForAmount_UserWaitingInSameChat_ReturnsTrue()
+    public void IsWaitingForAmountUserWaitingInSameChatReturnsTrue()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _userStateService.SetWaitingForAmount(userId, chatId);
+        this.userStateService.SetWaitingForAmount(userId, chatId);
 
         // Act
-        var isWaiting = _userStateService.IsWaitingForAmount(userId, chatId);
+        var isWaiting = this.userStateService.IsWaitingForAmount(userId, chatId);
 
         // Assert
         Assert.That(isWaiting, Is.True);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Checked waiting for amount status") && v.ToString().Contains("True")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Checked waiting for amount status") && v.ToString() !.Contains("True")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing waiting for amount for an existing user removes the state.
+    /// </summary>
     [Test]
-    public void RemoveWaitingForAmount_ExistingUser_RemovesState()
+    public void RemoveWaitingForAmountExistingUserRemovesState()
     {
         // Arrange
         var userId = 123L;
         var chatId = 456L;
-        _userStateService.SetWaitingForAmount(userId, chatId);
+        this.userStateService.SetWaitingForAmount(userId, chatId);
 
         // Act
-        _userStateService.RemoveWaitingForAmount(userId);
+        this.userStateService.RemoveWaitingForAmount(userId);
 
         // Assert
-        var isWaiting = _userStateService.IsWaitingForAmount(userId, chatId);
+        var isWaiting = this.userStateService.IsWaitingForAmount(userId, chatId);
         Assert.That(isWaiting, Is.False);
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Removed user") && v.ToString().Contains("from waiting for amount state")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Removed user") && v.ToString() !.Contains("from waiting for amount state")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing waiting for amount for a non-existent user logs a debug message.
+    /// </summary>
     [Test]
-    public void RemoveWaitingForAmount_NonExistentUser_LogsDebug()
+    public void RemoveWaitingForAmountNonExistentUserLogsDebug()
     {
         // Arrange
-        var userId = 999L; // Несуществующий пользователь
+        var userId = 999L; // Non-existent user
 
         // Act
-        _userStateService.RemoveWaitingForAmount(userId);
+        this.userStateService.RemoveWaitingForAmount(userId);
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Attempted to remove non-existent waiting state for user")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Attempted to remove non-existent waiting state for user")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that getting waiting users count returns zero when there are no users.
+    /// </summary>
     [Test]
-    public void GetWaitingUsersCount_NoUsers_ReturnsZero()
+    public void GetWaitingUsersCountNoUsersReturnsZero()
     {
-        // Arrange - нет пользователей в состоянии ожидания
+        // Arrange - no users in waiting state
 
         // Act
-        var count = _userStateService.GetWaitingUsersCount();
+        var count = this.userStateService.GetWaitingUsersCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Trace,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Current users waiting for amount input: 0")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Current users waiting for amount input: 0")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that getting waiting users count returns the correct count for multiple users.
+    /// </summary>
     [Test]
-    public void GetWaitingUsersCount_MultipleUsers_ReturnsCorrectCount()
+    public void GetWaitingUsersCountMultipleUsersReturnsCorrectCount()
     {
         // Arrange
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
-        _userStateService.SetWaitingForAmount(125L, 458L);
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
+        this.userStateService.SetWaitingForAmount(125L, 458L);
 
         // Act
-        var count = _userStateService.GetWaitingUsersCount();
+        var count = this.userStateService.GetWaitingUsersCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(3));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Trace,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Current users waiting for amount input: 3")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Current users waiting for amount input: 3")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that getting waiting users count is updated after removal.
+    /// </summary>
     [Test]
-    public void GetWaitingUsersCount_AfterRemoval_ReturnsUpdatedCount()
+    public void GetWaitingUsersCountAfterRemovalReturnsUpdatedCount()
     {
         // Arrange
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
-        _userStateService.SetWaitingForAmount(125L, 458L);
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
+        this.userStateService.SetWaitingForAmount(125L, 458L);
 
-        // Act - удаляем одного пользователя
-        _userStateService.RemoveWaitingForAmount(124L);
-        var count = _userStateService.GetWaitingUsersCount();
+        // Act - remove one user
+        this.userStateService.RemoveWaitingForAmount(124L);
+        var count = this.userStateService.GetWaitingUsersCount();
 
         // Assert
         Assert.That(count, Is.EqualTo(2));
     }
 
+    /// <summary>
+    /// Tests that clearing all waiting states with users clears all states.
+    /// </summary>
     [Test]
-    public void ClearAllWaitingStates_WithUsers_ClearsAllStates()
+    public void ClearAllWaitingStatesWithUsersClearsAllStates()
     {
         // Arrange
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
-        _userStateService.SetWaitingForAmount(125L, 458L);
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
+        this.userStateService.SetWaitingForAmount(125L, 458L);
 
         // Act
-        _userStateService.ClearAllWaitingStates();
+        this.userStateService.ClearAllWaitingStates();
 
         // Assert
-        var count = _userStateService.GetWaitingUsersCount();
+        var count = this.userStateService.GetWaitingUsersCount();
         Assert.That(count, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleared all waiting states, affected 3 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Cleared all waiting states, affected 3 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that clearing all waiting states with no users logs zero.
+    /// </summary>
     [Test]
-    public void ClearAllWaitingStates_NoUsers_LogsZero()
+    public void ClearAllWaitingStatesNoUsersLogsZero()
     {
-        // Arrange - нет пользователей
+        // Arrange - no users
 
         // Act
-        _userStateService.ClearAllWaitingStates();
+        this.userStateService.ClearAllWaitingStates();
 
         // Assert
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cleared all waiting states, affected 0 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Cleared all waiting states, affected 0 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing multiple waiting states for all existing users removes all.
+    /// </summary>
     [Test]
-    public void RemoveMultipleWaitingStates_AllUsersExist_RemovesAll()
+    public void RemoveMultipleWaitingStatesAllUsersExistRemovesAll()
     {
         // Arrange
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
-        _userStateService.SetWaitingForAmount(125L, 458L);
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
+        this.userStateService.SetWaitingForAmount(125L, 458L);
 
         var userIdsToRemove = new long[] { 123L, 124L, 125L };
 
         // Act
-        var removedCount = _userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
+        var removedCount = this.userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
 
         // Assert
         Assert.That(removedCount, Is.EqualTo(3));
 
-        var remainingCount = _userStateService.GetWaitingUsersCount();
+        var remainingCount = this.userStateService.GetWaitingUsersCount();
         Assert.That(remainingCount, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Removed waiting states for 3 out of 3 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Removed waiting states for 3 out of 3 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing multiple waiting states for some existing users removes only existing ones.
+    /// </summary>
     [Test]
-    public void RemoveMultipleWaitingStates_SomeUsersExist_RemovesOnlyExisting()
+    public void RemoveMultipleWaitingStatesSomeUsersExistRemovesOnlyExisting()
     {
         // Arrange
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
-        // 125L не добавляли
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
 
         var userIdsToRemove = new long[] { 123L, 124L, 125L };
 
         // Act
-        var removedCount = _userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
+        var removedCount = this.userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
 
         // Assert
         Assert.That(removedCount, Is.EqualTo(2));
 
-        var remainingCount = _userStateService.GetWaitingUsersCount();
+        var remainingCount = this.userStateService.GetWaitingUsersCount();
         Assert.That(remainingCount, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Removed waiting states for 2 out of 3 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Removed waiting states for 2 out of 3 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing multiple waiting states for non-existent users returns zero.
+    /// </summary>
     [Test]
-    public void RemoveMultipleWaitingStates_NoUsersExist_ReturnsZero()
+    public void RemoveMultipleWaitingStatesNoUsersExistReturnsZero()
     {
         // Arrange
         var userIdsToRemove = new long[] { 123L, 124L, 125L };
 
         // Act
-        var removedCount = _userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
+        var removedCount = this.userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
 
         // Assert
         Assert.That(removedCount, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Removed waiting states for 0 out of 3 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Removed waiting states for 0 out of 3 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests that removing multiple waiting states with an empty list returns zero.
+    /// </summary>
     [Test]
-    public void RemoveMultipleWaitingStates_EmptyList_ReturnsZero()
+    public void RemoveMultipleWaitingStatesEmptyListReturnsZero()
     {
         // Arrange
         var userIdsToRemove = Array.Empty<long>();
 
         // Act
-        var removedCount = _userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
+        var removedCount = this.userStateService.RemoveMultipleWaitingStates(userIdsToRemove);
 
         // Assert
         Assert.That(removedCount, Is.EqualTo(0));
 
-        _loggerMock.Verify(
+        this.loggerMock.Verify(
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Removed waiting states for 0 out of 0 users")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString() !.Contains("Removed waiting states for 0 out of 0 users")),
                 It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
+    /// <summary>
+    /// Tests a complex scenario with multiple operations works correctly.
+    /// </summary>
     [Test]
-    public void MultipleOperations_ComplexScenario_WorksCorrectly()
+    public void MultipleOperationsComplexScenarioWorksCorrectly()
     {
-        // Arrange & Act - комплексный сценарий
-        _userStateService.SetWaitingForAmount(123L, 456L);
-        _userStateService.SetWaitingForAmount(124L, 457L);
+        // Arrange & Act - complex scenario
+        this.userStateService.SetWaitingForAmount(123L, 456L);
+        this.userStateService.SetWaitingForAmount(124L, 457L);
 
-        var countAfterAdd = _userStateService.GetWaitingUsersCount();
+        var countAfterAdd = this.userStateService.GetWaitingUsersCount();
         Assert.That(countAfterAdd, Is.EqualTo(2));
 
-        // Проверяем состояния
-        var user123Waiting = _userStateService.IsWaitingForAmount(123L, 456L);
-        var user124Waiting = _userStateService.IsWaitingForAmount(124L, 457L);
+        // Check states
+        var user123Waiting = this.userStateService.IsWaitingForAmount(123L, 456L);
+        var user124Waiting = this.userStateService.IsWaitingForAmount(124L, 457L);
         Assert.That(user123Waiting, Is.True);
         Assert.That(user124Waiting, Is.True);
 
-        // Обновляем состояние одного пользователя
-        _userStateService.SetWaitingForAmount(123L, 789L);
+        // Update state for one user
+        this.userStateService.SetWaitingForAmount(123L, 789L);
 
-        var user123OldChat = _userStateService.IsWaitingForAmount(123L, 456L);
-        var user123NewChat = _userStateService.IsWaitingForAmount(123L, 789L);
+        var user123OldChat = this.userStateService.IsWaitingForAmount(123L, 456L);
+        var user123NewChat = this.userStateService.IsWaitingForAmount(123L, 789L);
         Assert.That(user123OldChat, Is.False);
         Assert.That(user123NewChat, Is.True);
 
-        // Удаляем одного пользователя
-        _userStateService.RemoveWaitingForAmount(124L);
+        // Remove one user
+        this.userStateService.RemoveWaitingForAmount(124L);
 
-        var countAfterRemove = _userStateService.GetWaitingUsersCount();
+        var countAfterRemove = this.userStateService.GetWaitingUsersCount();
         Assert.That(countAfterRemove, Is.EqualTo(1));
 
-        // Очищаем все
-        _userStateService.ClearAllWaitingStates();
+        // Clear all
+        this.userStateService.ClearAllWaitingStates();
 
-        var finalCount = _userStateService.GetWaitingUsersCount();
+        var finalCount = this.userStateService.GetWaitingUsersCount();
         Assert.That(finalCount, Is.EqualTo(0));
     }
 
+    /// <summary>
+    /// Tests that independent users do not interfere with each other's states.
+    /// </summary>
     [Test]
-    public void IndependentUsers_DoNotInterfere()
+    public void IndependentUsersDoNotInterfere()
     {
         // Arrange
         var user1 = 123L;
@@ -420,25 +483,25 @@ public class UserStateServiceTests
         var chat2 = 457L;
 
         // Act
-        _userStateService.SetWaitingForAmount(user1, chat1);
-        _userStateService.SetWaitingForAmount(user2, chat2);
+        this.userStateService.SetWaitingForAmount(user1, chat1);
+        this.userStateService.SetWaitingForAmount(user2, chat2);
 
-        // Assert - проверяем, что состояния независимы
-        var user1InChat1 = _userStateService.IsWaitingForAmount(user1, chat1);
-        var user1InChat2 = _userStateService.IsWaitingForAmount(user1, chat2);
-        var user2InChat1 = _userStateService.IsWaitingForAmount(user2, chat1);
-        var user2InChat2 = _userStateService.IsWaitingForAmount(user2, chat2);
+        // Assert - check that states are independent
+        var user1InChat1 = this.userStateService.IsWaitingForAmount(user1, chat1);
+        var user1InChat2 = this.userStateService.IsWaitingForAmount(user1, chat2);
+        var user2InChat1 = this.userStateService.IsWaitingForAmount(user2, chat1);
+        var user2InChat2 = this.userStateService.IsWaitingForAmount(user2, chat2);
 
         Assert.That(user1InChat1, Is.True);
         Assert.That(user1InChat2, Is.False);
         Assert.That(user2InChat1, Is.False);
         Assert.That(user2InChat2, Is.True);
 
-        // Удаляем только user1
-        _userStateService.RemoveWaitingForAmount(user1);
+        // Remove only user1
+        this.userStateService.RemoveWaitingForAmount(user1);
 
-        var user1AfterRemove = _userStateService.IsWaitingForAmount(user1, chat1);
-        var user2AfterRemove = _userStateService.IsWaitingForAmount(user2, chat2);
+        var user1AfterRemove = this.userStateService.IsWaitingForAmount(user1, chat1);
+        var user2AfterRemove = this.userStateService.IsWaitingForAmount(user2, chat2);
 
         Assert.That(user1AfterRemove, Is.False);
         Assert.That(user2AfterRemove, Is.True);

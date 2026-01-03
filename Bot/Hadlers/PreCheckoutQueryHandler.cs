@@ -1,4 +1,8 @@
-﻿using Bot.Services;
+﻿// <copyright file="PreCheckoutQueryHandler.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using Bot.Services;
 using Microsoft.Extensions.Logging;
 using Services;
 using Telegram.Bot;
@@ -68,8 +72,11 @@ public class PreCheckoutQueryHandler : IUpdateHandlerCommand
                     cancellationToken: cancellationToken);
 
                 logger.LogInformation(
-                    "Approved pre-checkout query for user {UserId}, payload: {InvoicePayload}, amount: {Amount} {Currency}",
-                    preCheckoutQuery.From.Id, preCheckoutQuery.InvoicePayload, preCheckoutQuery.TotalAmount / 100m, preCheckoutQuery.Currency);
+                                      "Approved pre-checkout query for user {UserId}, payload: {InvoicePayload}, amount: {Amount} {Currency}",
+                                      preCheckoutQuery.From.Id,
+                                      preCheckoutQuery.InvoicePayload,
+                                      preCheckoutQuery.TotalAmount / 100m,
+                                      preCheckoutQuery.Currency);
             }
             else
             {
