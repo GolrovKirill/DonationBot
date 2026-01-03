@@ -4,6 +4,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-✓-2496ED?logo=docker)](https://www.docker.com/)
 [![Telegram](https://img.shields.io/badge/Telegram-API-26A5E4?logo=telegram)](https://core.telegram.org/bots/api)
+[![Build](https://github.com/GolrovKirill/DonationBot/actions/workflows/blank.yml/badge.svg)](https://github.com/GolrovKirill/DonationBot/actions/workflows/blank.yml)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > Телеграм-бот для автоматизации сбора пожертвований с поддержкой целей, статистики и админ-панели
