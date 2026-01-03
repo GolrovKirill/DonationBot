@@ -1,0 +1,39 @@
+#version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Data/Scripts/create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql
+      # настрой /var/lib/postgresql/data/pg_hba.conf под себя
+    ports:
+      - "5432:5432"
+    networks:
+      - donationbot-network
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - BotConfig__BotToken=${BotConfig__BotToken}
+      - BotConfig__PaymentProviderToken=${BotConfig__PaymentProviderToken}
+      - DatabaseConfig__ConnectionString=${DatabaseConfig__ConnectionString}
+    depends_on:
+      - postgres
+    networks:
+      - donationbot-network
+
+networks:
+  donationbot-network:
+
+volumes:
+  postgres_data:

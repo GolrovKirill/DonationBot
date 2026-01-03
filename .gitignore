@@ -52,3 +52,39 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Секреты
+appsettings.Development.json
+appsettings.Production.json
+.env
+*.env
+secrets.json
+
+# IDE файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Временные файлы
+bin/
+obj/
+.vs/
+*.suo
+*.user
+
+# Docker
+docker-compose.override.yml
+
+# Логи
+*.log
+logs/
+
+# Бинарные файлы
+*.dll
+*.exe
+*.pdb
+
+# БД
+*.db
+__pycache__/
