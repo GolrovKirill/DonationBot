@@ -18,7 +18,7 @@ namespace Bot;
 /// </summary>
 public class PollingService : BackgroundService
 {
-    private readonly IServiceProvider serviceProvider;
+    private readonly IServiceScopeFactory serviceProvider;
     private readonly ILogger<PollingService> logger;
 
     /// <summary>
@@ -26,7 +26,7 @@ public class PollingService : BackgroundService
     /// </summary>
     /// <param name="serviceProvider">The service provider for dependency injection.</param>
     /// <param name="logger">Logger instance for tracking operations.</param>
-    public PollingService(IServiceProvider serviceProvider, ILogger<PollingService> logger)
+    public PollingService(IServiceScopeFactory serviceProvider, ILogger<PollingService> logger)
     {
         this.serviceProvider = serviceProvider;
         this.logger = logger;
